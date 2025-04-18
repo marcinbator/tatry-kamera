@@ -11,10 +11,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.32.0'
+      - name: Install Flutter (dev version)
+        run: |
+          git clone https://github.com/flutter/flutter.git --branch 3.32.0-0.1.pre --depth 1
+          echo "$GITHUB_WORKSPACE/flutter/bin" >> $GITHUB_PATH
+          echo "FLUTTER_HOME=$GITHUB_WORKSPACE/flutter" >> $GITHUB_ENV
+          flutter --version
 
       - name: Install dependencies
         run: flutter pub get
@@ -27,3 +29,4 @@ jobs:
         with:
           name: release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+
