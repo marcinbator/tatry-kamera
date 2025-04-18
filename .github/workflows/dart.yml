@@ -15,8 +15,8 @@ jobs:
         run: |
           git clone https://github.com/flutter/flutter.git --branch 3.32.0-0.1.pre --depth 1
           echo "$GITHUB_WORKSPACE/flutter/bin" >> $GITHUB_PATH
-          echo "FLUTTER_HOME=$GITHUB_WORKSPACE/flutter" >> $GITHUB_ENV
-          flutter --version
+          export PATH="$GITHUB_WORKSPACE/flutter/bin:$PATH"
+          flutter doctor
 
       - name: Install dependencies
         run: flutter pub get
