@@ -27,11 +27,15 @@ jobs:
       - name: Build APK
         run: flutter build apk --release
 
-      - name: Upload APK to GitHub Release
+      - name: Rename APK
+        run: |
+          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/tatry_kamera.apk
+       
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          name: Release ${{ github.sha }}
-          tag_name: "v${{ github.run_number }}"
-          files: build/app/outputs/flutter-apk/app-release.apk
+          name: Release v${{ github.run_number }}
+          tag_name: v${{ github.run_number }}
+          files: build/app/outputs/flutter-apk/tatry_kamera.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
