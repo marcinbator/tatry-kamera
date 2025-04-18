@@ -19,5 +19,11 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Builds - build Flutter APK and create github release
-        uses: Dank-del/flutter-build-and-publish-action@v1
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
