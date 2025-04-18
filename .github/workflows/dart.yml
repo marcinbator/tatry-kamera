@@ -31,7 +31,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           name: Release ${{ github.sha }}
-          tag_name: ${{ github.sha }}
+          tag_name: "v${{ github.run_number }}"
           files: build/app/outputs/flutter-apk/app-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
