@@ -32,9 +32,17 @@ class _TOPRCamsHomePageState extends State<TOPRCamsHomePage> {
     final savedKeys = prefs.getStringList('selectedCams');
     final savedOrder = prefs.getStringList('camsOrder');
 
-    _camsOrder = savedOrder ?? imagesUrls.keys.toList();
+    if (savedKeys != null && savedKeys.any((k) => !imagesUrls.containsKey(k))) {
+      await prefs.remove('selectedCams');
+      await prefs.remove('camsOrder');
+    }
+
+    _camsOrder = (savedOrder ?? imagesUrls.keys.toList())
+        .where((key) => imagesUrls.containsKey(key))
+        .toList();
     _camsSelection = {
-      for (var key in imagesUrls.keys) key: savedKeys?.contains(key) ?? true,
+      for (var key in imagesUrls.keys)
+        if (_camsOrder.contains(key)) key: savedKeys?.contains(key) ?? true,
     };
 
     setState(() {
