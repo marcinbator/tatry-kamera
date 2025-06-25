@@ -17,30 +17,33 @@ class _TOPRCamsHomePageState extends State<TOPRCamsHomePage> {
   bool isPortrait = true;
   Map<String, String> appImagesUrls = imagesUrls;
   late Map<String, bool> _camsSelection;
+  List<String> _camsOrder = [];
+
   Key _sliderKey = UniqueKey();
 
   @override
   void initState() {
     super.initState();
-    _camsSelection = {for (var entry in imagesUrls.entries) entry.key: true};
     _loadSavedCameraSelection();
   }
 
   void _loadSavedCameraSelection() async {
     final prefs = await SharedPreferences.getInstance();
     final savedKeys = prefs.getStringList('selectedCams');
-    if (savedKeys != null) {
-      setState(() {
-        _camsSelection = {
-          for (var key in imagesUrls.keys) key: savedKeys.contains(key),
-        };
-        appImagesUrls = {
-          for (var entry in _camsSelection.entries)
-            if (entry.value) entry.key: imagesUrls[entry.key]!,
-        };
-        _sliderKey = UniqueKey();
-      });
-    }
+    final savedOrder = prefs.getStringList('camsOrder');
+
+    _camsOrder = savedOrder ?? imagesUrls.keys.toList();
+    _camsSelection = {
+      for (var key in imagesUrls.keys) key: savedKeys?.contains(key) ?? true,
+    };
+
+    setState(() {
+      appImagesUrls = {
+        for (var key in _camsOrder)
+          if (_camsSelection[key] ?? false) key: imagesUrls[key]!,
+      };
+      _sliderKey = UniqueKey();
+    });
   }
 
   void _toggleOrientation() {
@@ -78,10 +81,18 @@ class _TOPRCamsHomePageState extends State<TOPRCamsHomePage> {
                   ),
                   const SizedBox(height: 10),
                   SizedBox(
-                    height: 300,
-                    child: ListView(
-                      children: _camsSelection.keys.map((camName) {
+                    height: 400,
+                    child: ReorderableListView(
+                      onReorder: (oldIndex, newIndex) {
+                        modalSetState(() {
+                          if (newIndex > oldIndex) newIndex -= 1;
+                          final item = _camsOrder.removeAt(oldIndex);
+                          _camsOrder.insert(newIndex, item);
+                        });
+                      },
+                      children: _camsOrder.map((camName) {
                         return CheckboxListTile(
+                          key: ValueKey(camName),
                           title: Text(camName),
                           value: _camsSelection[camName],
                           onChanged: (value) {
@@ -89,27 +100,38 @@ class _TOPRCamsHomePageState extends State<TOPRCamsHomePage> {
                               _camsSelection[camName] = value ?? false;
                             });
                           },
+                          secondary: Icon(Icons.drag_handle),
+                          activeColor: darkGreen,
+                          checkColor: white,
                         );
                       }).toList(),
                     ),
                   ),
                   ElevatedButton(
-                    onPressed: () {
-                      final selectedKeys = _camsSelection.entries
-                          .where((entry) => entry.value)
-                          .map((entry) => entry.key)
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: darkGreen,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: () async {
+                      final selectedKeys = _camsOrder
+                          .where((k) => _camsSelection[k] ?? false)
                           .toList();
-                      SharedPreferences.getInstance().then((prefs) {
-                        prefs.setStringList('selectedCams', selectedKeys);
-                      });
+
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setStringList('selectedCams', selectedKeys);
+                      await prefs.setStringList('camsOrder', _camsOrder);
+
+                      if (!mounted) return;
 
                       setState(() {
                         appImagesUrls = {
-                          for (var entry in _camsSelection.entries)
-                            if (entry.value) entry.key: imagesUrls[entry.key]!,
+                          for (var key in _camsOrder)
+                            if (_camsSelection[key] ?? false)
+                              key: imagesUrls[key]!,
                         };
                         _sliderKey = UniqueKey();
                       });
+
                       Navigator.pop(context);
                     },
                     child: const Text("Zastosuj"),
