@@ -57,7 +57,7 @@ android {
             signingConfig = if (isKeystoreConfigured)
                 signingConfigs.getByName("release")
             else
-                null
+                signingConfigs.getByName("debug")
         }
     }
 }
