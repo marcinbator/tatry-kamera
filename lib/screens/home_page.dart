@@ -25,6 +25,45 @@ class _TOPRCamsHomePageState extends State<TOPRCamsHomePage> {
   void initState() {
     super.initState();
     _loadSavedCameraSelection();
+    _showWalkthroughIfFirstTime();
+  }
+
+  void _showWalkthroughIfFirstTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasSeenWalkthrough = prefs.getBool('hasSeenWalkthrough') ?? false;
+
+    if (!hasSeenWalkthrough) {
+      await Future.delayed(
+        const Duration(milliseconds: 500),
+      );
+
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text("Witaj w Kamery TOPR!"),
+            content: const Text(
+              "• Przeglądaj kamery przesuwając obrazy.\n\n"
+              "• Dotknij ikonki listy (na dole) aby wybrać i uporządkować kamery.\n\n"
+              "• Dotknij ikonki obrotu aby zmienić orientację ekranu.\n\n"
+              "Miłego korzystania!",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text("OK"),
+              ),
+            ],
+          );
+        },
+      );
+
+      await prefs.setBool('hasSeenWalkthrough', true);
+    }
   }
 
   void _loadSavedCameraSelection() async {
