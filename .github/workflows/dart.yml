@@ -36,9 +36,22 @@ jobs:
       - name: Decode Keystore
         run: |
           echo "${{ secrets.KEYSTORE }}" | base64 --decode > android/app/upload-key.jks
+
+      - name: Report runner resources
+        run: |
+          free -h
+          df -h
+
       - name: Build appBundle
-        run: flutter build appbundle
-       
+        run: flutter build appbundle --verbose 2>&1 | tee build-verbose.log
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-verbose-log
+          path: build-verbose.log
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
