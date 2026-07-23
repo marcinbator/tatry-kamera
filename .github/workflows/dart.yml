@@ -14,12 +14,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Flutter (dev version)
-        run: |
-          git clone https://github.com/flutter/flutter.git --branch 3.34.0-0.0.pre --depth 1
-          echo "$GITHUB_WORKSPACE/flutter/bin" >> $GITHUB_PATH
-          export PATH="$GITHUB_WORKSPACE/flutter/bin:$PATH"
-          flutter doctor
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
       - name: Install dependencies
         run: flutter pub get
 
@@ -49,5 +53,5 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.SERVICE_ACCOUNT_JSON }}
           packageName: pl.bator.tatry_kamera
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
-          track: production,beta,alpha,internal
+          tracks: production,beta,alpha,internal
           status: completed
