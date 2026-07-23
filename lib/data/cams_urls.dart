@@ -1,3 +1,15 @@
+String camCodeFromUrl(String url) {
+  final fileName = url.split('/').last;
+  return fileName.split('.').first;
+}
+
+String buildHistoryUrl(String camCode, DateTime time) {
+  String two(int n) => n.toString().padLeft(2, '0');
+  final datePart = '${time.year}${two(time.month)}${two(time.day)}';
+  final timePart = '${two(time.hour)}${two(time.minute)}';
+  return 'https://pogoda.topr.pl/download/history/$datePart/${camCode}_${datePart}_$timePart.jpeg';
+}
+
 const Map<String, String> imagesUrls = {
   "Morskie Oko: Rysy": "https://pogoda.topr.pl/download/current/mors.jpeg",
   "Morskie Oko: Mnich": "https://pogoda.topr.pl/download/current/momn.jpeg",

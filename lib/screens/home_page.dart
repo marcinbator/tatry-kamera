@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../components/image_tab.dart';
 import '../data/cams_urls.dart';
 import '../data/colors.dart';
+import '../data/widget_service.dart';
 
 class TOPRCamsHomePage extends StatefulWidget {
   const TOPRCamsHomePage({super.key});
@@ -26,6 +27,7 @@ class _TOPRCamsHomePageState extends State<TOPRCamsHomePage> {
     super.initState();
     _loadSavedCameraSelection();
     _showWalkthroughIfFirstTime();
+    ToprWidgetService.syncWidget();
   }
 
   void _showWalkthroughIfFirstTime() async {
@@ -192,6 +194,71 @@ class _TOPRCamsHomePageState extends State<TOPRCamsHomePage> {
     );
   }
 
+  void _openWidgetSettings() async {
+    final currentCam = await ToprWidgetService.getSelectedCam();
+    if (!mounted) return;
+    String selectedCam = currentCam;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, modalSetState) {
+            return Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    "Widget na ekranie głównym",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    "Wybierz miejsce, które ma być pokazywane na widgecie.",
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 350,
+                    child: ListView(
+                      children: imagesUrls.keys.map((camName) {
+                        return RadioListTile<String>(
+                          title: Text(camName),
+                          value: camName,
+                          groupValue: selectedCam,
+                          activeColor: darkGreen,
+                          onChanged: (value) {
+                            modalSetState(() {
+                              selectedCam = value ?? selectedCam;
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: darkGreen,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: () async {
+                      await ToprWidgetService.setSelectedCam(selectedCam);
+                      await ToprWidgetService.requestPinWidget();
+                      if (context.mounted) Navigator.pop(context);
+                    },
+                    child: const Text("Zapisz i dodaj widget"),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isPortrait =
@@ -240,6 +307,13 @@ class _TOPRCamsHomePageState extends State<TOPRCamsHomePage> {
             onPressed: _enableListEditor,
             mini: true,
             child: const Icon(Icons.list),
+          ),
+          const SizedBox(height: 10),
+          FloatingActionButton(
+            heroTag: "widgetButton",
+            onPressed: _openWidgetSettings,
+            mini: true,
+            child: const Icon(Icons.widgets),
           ),
           const SizedBox(height: 10),
           FloatingActionButton(
