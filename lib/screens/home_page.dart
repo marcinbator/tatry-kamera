@@ -28,6 +28,13 @@ class _TOPRCamsHomePageState extends State<TOPRCamsHomePage> {
     _loadSavedCameraSelection();
     _showWalkthroughIfFirstTime();
     ToprWidgetService.syncWidget();
+    _openWidgetSettingsIfConfiguring();
+  }
+
+  void _openWidgetSettingsIfConfiguring() async {
+    final configuring = await ToprWidgetService.isConfiguring();
+    if (!configuring || !mounted) return;
+    _openWidgetSettings(fromConfigure: true);
   }
 
   void _showWalkthroughIfFirstTime() async {
@@ -194,7 +201,7 @@ class _TOPRCamsHomePageState extends State<TOPRCamsHomePage> {
     );
   }
 
-  void _openWidgetSettings() async {
+  void _openWidgetSettings({bool fromConfigure = false}) async {
     final currentCam = await ToprWidgetService.getSelectedCam();
     final scanMode = await ToprWidgetService.isScanMode();
     if (!mounted) return;
@@ -264,37 +271,55 @@ class _TOPRCamsHomePageState extends State<TOPRCamsHomePage> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: darkGreen,
-                          ),
-                          onPressed: () async {
-                            await applySelection();
-                            if (context.mounted) Navigator.pop(context);
-                          },
-                          child: const Text("Zapisz"),
+                  if (fromConfigure)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: darkGreen,
+                          foregroundColor: Colors.white,
                         ),
+                        onPressed: () async {
+                          await applySelection();
+                          await ToprWidgetService.finishConfiguration();
+                        },
+                        child: const Text("Zapisz"),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: darkGreen,
-                            foregroundColor: Colors.white,
+                    )
+                  else
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor:
+                                  Theme.of(context).colorScheme.onSurface,
+                              side: const BorderSide(color: green, width: 1.5),
+                            ),
+                            onPressed: () async {
+                              await applySelection();
+                              if (context.mounted) Navigator.pop(context);
+                            },
+                            child: const Text("Zapisz"),
                           ),
-                          onPressed: () async {
-                            await applySelection();
-                            await ToprWidgetService.requestPinWidget();
-                            if (context.mounted) Navigator.pop(context);
-                          },
-                          child: const Text("Zapisz i dodaj widget"),
                         ),
-                      ),
-                    ],
-                  ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: darkGreen,
+                              foregroundColor: Colors.white,
+                            ),
+                            onPressed: () async {
+                              await applySelection();
+                              await ToprWidgetService.requestPinWidget();
+                              if (context.mounted) Navigator.pop(context);
+                            },
+                            child: const Text("Zapisz i dodaj widget"),
+                          ),
+                        ),
+                      ],
+                    ),
                 ],
               ),
             );
@@ -313,7 +338,6 @@ class _TOPRCamsHomePageState extends State<TOPRCamsHomePage> {
           ? PreferredSize(
               preferredSize: const Size.fromHeight(60.0),
               child: AppBar(
-                backgroundColor: black,
                 title: Row(
                   children: [
                     ClipOval(child: Image.asset('assets/logo.png', height: 40)),

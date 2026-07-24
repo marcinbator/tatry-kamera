@@ -3,6 +3,7 @@ package pl.bator.tatry_kamera
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -10,12 +11,20 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
 import android.widget.RemoteViews
+import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.Worker
+import androidx.work.WorkerParameters
 import java.net.HttpURLConnection
 import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 class ToprCamWidgetProvider : AppWidgetProvider() {
@@ -24,7 +33,36 @@ class ToprCamWidgetProvider : AppWidgetProvider() {
         private const val PREFS_NAME = "HomeWidgetPreferences"
         private const val DEFAULT_CAM_CODE = "mors"
         private const val DEFAULT_CAM_NAME = "Morskie Oko: Rysy"
+        private const val REFRESH_WORK_NAME = "topr_cam_widget_refresh"
         private val executor = Executors.newCachedThreadPool()
+
+        fun scheduleRefresh(context: Context) {
+            val request = PeriodicWorkRequestBuilder<RefreshWorker>(15, TimeUnit.MINUTES)
+                .setConstraints(
+                    Constraints.Builder()
+                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                        .build()
+                )
+                .build()
+            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                REFRESH_WORK_NAME,
+                ExistingPeriodicWorkPolicy.KEEP,
+                request
+            )
+        }
+
+        internal fun requestUpdate(context: Context) {
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val ids = appWidgetManager.getAppWidgetIds(
+                ComponentName(context, ToprCamWidgetProvider::class.java)
+            )
+            if (ids.isEmpty()) return
+            val intent = Intent(context, ToprCamWidgetProvider::class.java).apply {
+                action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
+                putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
+            }
+            context.sendBroadcast(intent)
+        }
 
         private fun pendingIntentFlags(): Int {
             return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -119,6 +157,8 @@ class ToprCamWidgetProvider : AppWidgetProvider() {
     ) {
         if (appWidgetIds.isEmpty()) return
 
+        scheduleRefresh(context)
+
         val pendingResult = goAsync()
         val remaining = AtomicInteger(appWidgetIds.size)
         for (appWidgetId in appWidgetIds) {
@@ -128,5 +168,20 @@ class ToprCamWidgetProvider : AppWidgetProvider() {
                 }
             }
         }
+    }
+
+    override fun onEnabled(context: Context) {
+        scheduleRefresh(context)
+    }
+
+    override fun onDisabled(context: Context) {
+        WorkManager.getInstance(context).cancelUniqueWork(REFRESH_WORK_NAME)
+    }
+}
+
+class RefreshWorker(context: Context, params: WorkerParameters) : Worker(context, params) {
+    override fun doWork(): Result {
+        ToprCamWidgetProvider.requestUpdate(applicationContext)
+        return Result.success()
     }
 }

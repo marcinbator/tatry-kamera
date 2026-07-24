@@ -7,4 +7,6 @@
     android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/tatry_kamera_widget"
     android:resizeMode="horizontal|vertical"
-    android:widgetCategory="home_screen" />
+    android:widgetCategory="home_screen"
+    android:configure="pl.bator.tatry_kamera.MainActivity"
+    android:widgetFeatures="reconfigurable" />

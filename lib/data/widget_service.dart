@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -10,6 +11,38 @@ const String defaultWidgetCam = 'Morskie Oko: Rysy';
 const String scanCamValue = '__scan__';
 
 class ToprWidgetService {
+  static const MethodChannel _configureChannel = MethodChannel(
+    'pl.bator.tatry_kamera/widget_configure',
+  );
+
+  /// True when the app was launched to configure a home-screen widget
+  /// (initial placement, or "Widget settings" from a long-press).
+  static Future<bool> isConfiguring() async {
+    try {
+      return await _configureChannel.invokeMethod<bool>('isConfiguring') ??
+          false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Tells Android the widget configuration is done, applying it and
+  /// closing the configuration screen.
+  static Future<void> finishConfiguration() async {
+    try {
+      await _configureChannel.invokeMethod('finishConfiguration');
+    } catch (_) {}
+  }
+
+  /// Suppresses the automatic configuration screen for the pin request
+  /// that immediately follows, since the user already picked settings
+  /// in-app.
+  static Future<void> _prepareForPin() async {
+    try {
+      await _configureChannel.invokeMethod('prepareForPin');
+    } catch (_) {}
+  }
+
   static Future<String> getSelectedCam() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(widgetCamPrefsKey);
@@ -63,7 +96,8 @@ class ToprWidgetService {
     await HomeWidget.updateWidget(androidName: androidWidgetProviderName);
   }
 
-  static Future<void> requestPinWidget() {
+  static Future<void> requestPinWidget() async {
+    await _prepareForPin();
     return HomeWidget.requestPinWidget(
       androidName: androidWidgetProviderName,
     );

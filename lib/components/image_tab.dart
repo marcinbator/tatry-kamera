@@ -138,12 +138,6 @@ class ImageTabState extends State<ImageTab> with WidgetsBindingObserver {
                 onPressed:
                     _stepsBack > 0 ? () => _changeSteps(_stepsBack - 1) : null,
               ),
-              if (_stepsBack != 0)
-                IconButton(
-                  icon: const Icon(Icons.live_tv),
-                  tooltip: 'Wróć do na żywo',
-                  onPressed: () => _changeSteps(0),
-                ),
             ],
           ),
         ],

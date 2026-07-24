@@ -14,7 +14,26 @@ class TOPRCamsApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark().copyWith(
+      themeMode: ThemeMode.system,
+      theme: ThemeData.light().copyWith(
+        primaryColor: darkGreen,
+        appBarTheme: AppBarTheme(
+          backgroundColor: darkGreen,
+          titleTextStyle: const TextStyle(color: white, fontSize: 20),
+        ),
+        tabBarTheme: TabBarThemeData(
+          labelColor: darkGreen,
+          unselectedLabelColor: Colors.black87,
+          indicator: UnderlineTabIndicator(
+            borderSide: BorderSide(color: darkGreen, width: 2),
+          ),
+        ),
+        floatingActionButtonTheme: FloatingActionButtonThemeData(
+          backgroundColor: darkGreen,
+          foregroundColor: white,
+        ),
+      ),
+      darkTheme: ThemeData.dark().copyWith(
         primaryColor: darkGreen,
         scaffoldBackgroundColor: black,
         appBarTheme: AppBarTheme(
