@@ -324,7 +324,7 @@ class _TOPRCamsHomePageState extends State<TOPRCamsHomePage> {
                               await ToprWidgetService.requestPinWidget();
                               if (context.mounted) Navigator.pop(context);
                             },
-                            child: const Text("Zapisz i dodaj widget"),
+                            child: const Text("Zapisz i dodaj"),
                           ),
                         ),
                       ],
