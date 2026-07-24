@@ -11,7 +11,7 @@ class ImageTab extends StatefulWidget {
   ImageTabState createState() => ImageTabState();
 }
 
-class ImageTabState extends State<ImageTab> {
+class ImageTabState extends State<ImageTab> with WidgetsBindingObserver {
   static const int _stepMinutes = 10;
   static const int _maxStepsBack = 72; // 12h / 10min steps
 
@@ -22,6 +22,22 @@ class ImageTabState extends State<ImageTab> {
   void initState() {
     super.initState();
     _camCode = camCodeFromUrl(widget.imageUrl);
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _stepsBack != 0) {
+      setState(() {
+        _stepsBack = 0;
+      });
+    }
   }
 
   DateTime get _selectedTime {
@@ -54,35 +70,25 @@ class ImageTabState extends State<ImageTab> {
 
   @override
   Widget build(BuildContext context) {
-    final isPortrait =
-        MediaQuery.of(context).orientation == Orientation.portrait;
-    final width = isPortrait
-        ? MediaQuery.of(context).size.width
-        : MediaQuery.of(context).size.width * 0.67;
-
     return Column(
       children: [
         Expanded(
           child: Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Center(
-              child: InteractiveViewer(
-                minScale: 1,
-                maxScale: 5,
+            child: InteractiveViewer(
+              minScale: 1,
+              maxScale: 5,
+              child: SizedBox.expand(
                 child: Image.network(
                   _displayUrl,
                   key: ValueKey(_displayUrl),
-                  width: width,
                   fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) => SizedBox(
-                    width: width,
-                    child: const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(24.0),
-                        child: Text(
-                          'Brak zdjęcia dla wybranej godziny',
-                          textAlign: TextAlign.center,
-                        ),
+                  errorBuilder: (context, error, stackTrace) => const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(24.0),
+                      child: Text(
+                        'Brak zdjęcia dla wybranej godziny',
+                        textAlign: TextAlign.center,
                       ),
                     ),
                   ),
@@ -98,7 +104,7 @@ class ImageTabState extends State<ImageTab> {
 
   Widget _buildHistoryControls() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.fromLTRB(12, 4, 84, 4),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

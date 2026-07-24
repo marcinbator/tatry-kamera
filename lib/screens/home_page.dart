@@ -196,8 +196,18 @@ class _TOPRCamsHomePageState extends State<TOPRCamsHomePage> {
 
   void _openWidgetSettings() async {
     final currentCam = await ToprWidgetService.getSelectedCam();
+    final scanMode = await ToprWidgetService.isScanMode();
     if (!mounted) return;
     String selectedCam = currentCam;
+    bool isScan = scanMode;
+
+    Future<void> applySelection() async {
+      if (isScan) {
+        await ToprWidgetService.setScanMode();
+      } else {
+        await ToprWidgetService.setSelectedCam(selectedCam);
+      }
+    }
 
     showModalBottomSheet(
       context: context,
@@ -223,32 +233,67 @@ class _TOPRCamsHomePageState extends State<TOPRCamsHomePage> {
                   SizedBox(
                     height: 350,
                     child: ListView(
-                      children: imagesUrls.keys.map((camName) {
-                        return RadioListTile<String>(
-                          title: Text(camName),
-                          value: camName,
-                          groupValue: selectedCam,
+                      children: [
+                        RadioListTile<String>(
+                          title: const Text("Scan (zmienia kamerę co odświeżenie)"),
+                          value: scanCamValue,
+                          groupValue: isScan ? scanCamValue : selectedCam,
                           activeColor: darkGreen,
                           onChanged: (value) {
                             modalSetState(() {
-                              selectedCam = value ?? selectedCam;
+                              isScan = true;
                             });
                           },
-                        );
-                      }).toList(),
+                        ),
+                        const Divider(height: 1),
+                        ...imagesUrls.keys.map((camName) {
+                          return RadioListTile<String>(
+                            title: Text(camName),
+                            value: camName,
+                            groupValue: isScan ? scanCamValue : selectedCam,
+                            activeColor: darkGreen,
+                            onChanged: (value) {
+                              modalSetState(() {
+                                isScan = false;
+                                selectedCam = value ?? selectedCam;
+                              });
+                            },
+                          );
+                        }),
+                      ],
                     ),
                   ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: darkGreen,
-                      foregroundColor: Colors.white,
-                    ),
-                    onPressed: () async {
-                      await ToprWidgetService.setSelectedCam(selectedCam);
-                      await ToprWidgetService.requestPinWidget();
-                      if (context.mounted) Navigator.pop(context);
-                    },
-                    child: const Text("Zapisz i dodaj widget"),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: darkGreen,
+                          ),
+                          onPressed: () async {
+                            await applySelection();
+                            if (context.mounted) Navigator.pop(context);
+                          },
+                          child: const Text("Zapisz"),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: darkGreen,
+                            foregroundColor: Colors.white,
+                          ),
+                          onPressed: () async {
+                            await applySelection();
+                            await ToprWidgetService.requestPinWidget();
+                            if (context.mounted) Navigator.pop(context);
+                          },
+                          child: const Text("Zapisz i dodaj widget"),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

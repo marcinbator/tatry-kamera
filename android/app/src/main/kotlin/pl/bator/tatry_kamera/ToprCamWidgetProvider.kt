@@ -56,8 +56,30 @@ class ToprCamWidgetProvider : AppWidgetProvider() {
         ) {
             val prefs: SharedPreferences =
                 context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val camCode = prefs.getString("cam_code", DEFAULT_CAM_CODE) ?: DEFAULT_CAM_CODE
-            val camName = prefs.getString("cam_name", DEFAULT_CAM_NAME) ?: DEFAULT_CAM_NAME
+
+            val scanMode = prefs.getBoolean("scan_mode", false)
+            val camCode: String
+            val camName: String
+            if (scanMode) {
+                val codes = (prefs.getString("scan_cam_codes", null) ?: DEFAULT_CAM_CODE)
+                    .split("|")
+                    .filter { it.isNotEmpty() }
+                val names = (prefs.getString("scan_cam_names", null) ?: DEFAULT_CAM_NAME)
+                    .split("|")
+                    .filter { it.isNotEmpty() }
+                if (codes.isEmpty()) {
+                    camCode = DEFAULT_CAM_CODE
+                    camName = DEFAULT_CAM_NAME
+                } else {
+                    val index = prefs.getInt("scan_index", 0) % codes.size
+                    camCode = codes[index]
+                    camName = names.getOrElse(index) { camCode }
+                    prefs.edit().putInt("scan_index", (index + 1) % codes.size).apply()
+                }
+            } else {
+                camCode = prefs.getString("cam_code", DEFAULT_CAM_CODE) ?: DEFAULT_CAM_CODE
+                camName = prefs.getString("cam_name", DEFAULT_CAM_NAME) ?: DEFAULT_CAM_NAME
+            }
 
             appWidgetManager.updateAppWidget(appWidgetId, buildBaseViews(context, camName))
 
