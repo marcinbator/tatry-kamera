@@ -19,8 +19,17 @@ class _TOPRCamsHomePageState extends State<TOPRCamsHomePage> {
   Map<String, String> appImagesUrls = imagesUrls;
   late Map<String, bool> _camsSelection;
   List<String> _camsOrder = [];
+  bool _imageZoomed = false;
 
   Key _sliderKey = UniqueKey();
+
+  void _handleZoomChanged(bool zoomed) {
+    if (zoomed != _imageZoomed) {
+      setState(() {
+        _imageZoomed = zoomed;
+      });
+    }
+  }
 
   @override
   void initState() {
@@ -356,11 +365,20 @@ class _TOPRCamsHomePageState extends State<TOPRCamsHomePage> {
             TabBar(
               tabs: appImagesUrls.keys.map((name) => Tab(text: name)).toList(),
               isScrollable: true,
+              onTap: (_) => _handleZoomChanged(false),
             ),
             Expanded(
               child: TabBarView(
+                physics: _imageZoomed
+                    ? const NeverScrollableScrollPhysics()
+                    : null,
                 children: appImagesUrls.entries
-                    .map((entry) => ImageTab(imageUrl: entry.value))
+                    .map(
+                      (entry) => ImageTab(
+                        imageUrl: entry.value,
+                        onZoomChanged: _handleZoomChanged,
+                      ),
+                    )
                     .toList(),
               ),
             ),
