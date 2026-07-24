@@ -2,7 +2,7 @@ name: Deploy
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 permissions:
   contents: write
@@ -59,12 +59,12 @@ jobs:
           tag_name: v${{ github.run_number }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
+
       - name: Upload .aab to Tracks
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.SERVICE_ACCOUNT_JSON }}
           packageName: pl.bator.tatry_kamera
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
-          tracks: production,beta,alpha,internal
+          tracks: production,beta
           status: completed
