@@ -43,10 +43,39 @@ class ToprWidgetService {
     } catch (_) {}
   }
 
+  /// Camera name the widget was tapped on, if the app was just launched
+  /// (or resumed) from a widget click. Consumes the value natively so it
+  /// is only delivered once.
+  static Future<String?> consumeLaunchCamera() async {
+    try {
+      return await _configureChannel.invokeMethod<String>(
+        'consumeLaunchCamera',
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Cameras the user has enabled in the app, in the app's display order.
+  static Future<List<String>> enabledCamNames() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedOrder = prefs.getStringList('camsOrder');
+    final savedKeys = prefs.getStringList('selectedCams');
+
+    final order = (savedOrder ?? imagesUrls.keys.toList())
+        .where((k) => imagesUrls.containsKey(k))
+        .toList();
+
+    if (savedKeys == null) return order;
+    return order.where((k) => savedKeys.contains(k)).toList();
+  }
+
   static Future<String> getSelectedCam() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(widgetCamPrefsKey);
-    if (saved != null && imagesUrls.containsKey(saved)) return saved;
+    final enabled = await enabledCamNames();
+    if (saved != null && enabled.contains(saved)) return saved;
+    if (enabled.isNotEmpty) return enabled.first;
     return defaultWidgetCam;
   }
 
@@ -88,7 +117,7 @@ class ToprWidgetService {
   }
 
   static Future<void> _pushScanData() async {
-    final names = imagesUrls.keys.toList();
+    final names = await enabledCamNames();
     final codes = names.map((n) => camCodeFromUrl(imagesUrls[n]!)).toList();
     await HomeWidget.saveWidgetData<String>('scan_cam_names', names.join('|'));
     await HomeWidget.saveWidgetData<String>('scan_cam_codes', codes.join('|'));

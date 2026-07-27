@@ -14,14 +14,20 @@ class TOPRCamsHomePage extends StatefulWidget {
   State<TOPRCamsHomePage> createState() => _TOPRCamsHomePageState();
 }
 
-class _TOPRCamsHomePageState extends State<TOPRCamsHomePage> {
+class _TOPRCamsHomePageState extends State<TOPRCamsHomePage>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   bool isPortrait = true;
   Map<String, String> appImagesUrls = imagesUrls;
   late Map<String, bool> _camsSelection;
   List<String> _camsOrder = [];
   bool _imageZoomed = false;
 
-  Key _sliderKey = UniqueKey();
+  late TabController _tabController;
+  String? _pendingFocusCam;
+  bool _selectionLoaded = false;
+
+  Orientation? _lastOrientation;
+  Key _tabBarKey = UniqueKey();
 
   void _handleZoomChanged(bool zoomed) {
     if (zoomed != _imageZoomed) {
@@ -34,10 +40,64 @@ class _TOPRCamsHomePageState extends State<TOPRCamsHomePage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _tabController = TabController(length: appImagesUrls.length, vsync: this);
     _loadSavedCameraSelection();
     _showWalkthroughIfFirstTime();
     ToprWidgetService.syncWidget();
     _openWidgetSettingsIfConfiguring();
+    _consumeLaunchCameraIfAny();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _consumeLaunchCameraIfAny();
+    }
+  }
+
+  void _consumeLaunchCameraIfAny() async {
+    final camName = await ToprWidgetService.consumeLaunchCamera();
+    if (camName == null || !mounted) return;
+    _focusCamera(camName);
+  }
+
+  void _focusCamera(String camName) {
+    if (!_selectionLoaded) {
+      // Camera selection/order is still loading; let _rebuildTabController
+      // pick this up once it's known, instead of jumping to a possibly
+      // stale (unfiltered) index now.
+      _pendingFocusCam = camName;
+      return;
+    }
+    final index = appImagesUrls.keys.toList().indexOf(camName);
+    if (index < 0) return;
+    _tabController.animateTo(index);
+  }
+
+  void _rebuildTabController() {
+    final oldController = _tabController;
+    int initialIndex = 0;
+    if (_pendingFocusCam != null) {
+      final idx = appImagesUrls.keys.toList().indexOf(_pendingFocusCam!);
+      _pendingFocusCam = null;
+      if (idx >= 0) initialIndex = idx;
+    } else if (appImagesUrls.isNotEmpty) {
+      initialIndex = oldController.index.clamp(0, appImagesUrls.length - 1);
+    }
+    _tabController = TabController(
+      length: appImagesUrls.length,
+      vsync: this,
+      initialIndex: appImagesUrls.isEmpty ? 0 : initialIndex,
+    );
+    oldController.dispose();
   }
 
   void _openWidgetSettingsIfConfiguring() async {
@@ -107,7 +167,8 @@ class _TOPRCamsHomePageState extends State<TOPRCamsHomePage> {
         for (var key in _camsOrder)
           if (_camsSelection[key] ?? false) key: imagesUrls[key]!,
       };
-      _sliderKey = UniqueKey();
+      _selectionLoaded = true;
+      _rebuildTabController();
     });
   }
 
@@ -185,6 +246,7 @@ class _TOPRCamsHomePageState extends State<TOPRCamsHomePage> {
                       final prefs = await SharedPreferences.getInstance();
                       await prefs.setStringList('selectedCams', selectedKeys);
                       await prefs.setStringList('camsOrder', _camsOrder);
+                      await ToprWidgetService.syncWidget();
 
                       if (!mounted) return;
 
@@ -194,7 +256,7 @@ class _TOPRCamsHomePageState extends State<TOPRCamsHomePage> {
                             if (_camsSelection[key] ?? false)
                               key: imagesUrls[key]!,
                         };
-                        _sliderKey = UniqueKey();
+                        _rebuildTabController();
                       });
 
                       Navigator.pop(context);
@@ -251,7 +313,7 @@ class _TOPRCamsHomePageState extends State<TOPRCamsHomePage> {
                     child: ListView(
                       children: [
                         RadioListTile<String>(
-                          title: const Text("Scan (zmienia kamerę co odświeżenie)"),
+                          title: const Text("Pokaz slajdów (wszystkie kamery)"),
                           value: scanCamValue,
                           groupValue: isScan ? scanCamValue : selectedCam,
                           activeColor: darkGreen,
@@ -262,7 +324,7 @@ class _TOPRCamsHomePageState extends State<TOPRCamsHomePage> {
                           },
                         ),
                         const Divider(height: 1),
-                        ...imagesUrls.keys.map((camName) {
+                        ...appImagesUrls.keys.map((camName) {
                           return RadioListTile<String>(
                             title: Text(camName),
                             value: camName,
@@ -340,8 +402,14 @@ class _TOPRCamsHomePageState extends State<TOPRCamsHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final isPortrait =
-        MediaQuery.of(context).orientation == Orientation.portrait;
+    final orientation = MediaQuery.of(context).orientation;
+    final isPortrait = orientation == Orientation.portrait;
+    if (_lastOrientation != null && _lastOrientation != orientation) {
+      // Force the TabBar to remount so it recomputes its scroll offset for
+      // the new width and keeps the selected tab in view.
+      _tabBarKey = UniqueKey();
+    }
+    _lastOrientation = orientation;
     return Scaffold(
       appBar: isPortrait
           ? PreferredSize(
@@ -357,33 +425,32 @@ class _TOPRCamsHomePageState extends State<TOPRCamsHomePage> {
               ),
             )
           : null,
-      body: DefaultTabController(
-        key: _sliderKey,
-        length: appImagesUrls.length,
-        child: Column(
-          children: [
-            TabBar(
-              tabs: appImagesUrls.keys.map((name) => Tab(text: name)).toList(),
-              isScrollable: true,
-              onTap: (_) => _handleZoomChanged(false),
+      body: Column(
+        children: [
+          TabBar(
+            key: _tabBarKey,
+            controller: _tabController,
+            tabs: appImagesUrls.keys.map((name) => Tab(text: name)).toList(),
+            isScrollable: true,
+            onTap: (_) => _handleZoomChanged(false),
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              physics: _imageZoomed
+                  ? const NeverScrollableScrollPhysics()
+                  : null,
+              children: appImagesUrls.entries
+                  .map(
+                    (entry) => ImageTab(
+                      imageUrl: entry.value,
+                      onZoomChanged: _handleZoomChanged,
+                    ),
+                  )
+                  .toList(),
             ),
-            Expanded(
-              child: TabBarView(
-                physics: _imageZoomed
-                    ? const NeverScrollableScrollPhysics()
-                    : null,
-                children: appImagesUrls.entries
-                    .map(
-                      (entry) => ImageTab(
-                        imageUrl: entry.value,
-                        onZoomChanged: _handleZoomChanged,
-                      ),
-                    )
-                    .toList(),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,

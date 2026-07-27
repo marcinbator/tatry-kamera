@@ -34,6 +34,7 @@ class ToprCamWidgetProvider : AppWidgetProvider() {
         private const val DEFAULT_CAM_CODE = "mors"
         private const val DEFAULT_CAM_NAME = "Morskie Oko: Rysy"
         private const val REFRESH_WORK_NAME = "topr_cam_widget_refresh"
+        internal const val EXTRA_CAM_NAME = "cam_name"
         private val executor = Executors.newCachedThreadPool()
 
         fun scheduleRefresh(context: Context) {
@@ -72,15 +73,23 @@ class ToprCamWidgetProvider : AppWidgetProvider() {
             }
         }
 
-        private fun buildBaseViews(context: Context, camName: String): RemoteViews {
+        private fun buildBaseViews(
+            context: Context,
+            appWidgetId: Int,
+            camName: String
+        ): RemoteViews {
             val views = RemoteViews(context.packageName, R.layout.tatry_kamera_widget)
             views.setTextViewText(R.id.widget_cam_name, camName)
 
             val launchIntent =
-                context.packageManager.getLaunchIntentForPackage(context.packageName)
-                    ?: Intent()
+                (context.packageManager.getLaunchIntentForPackage(context.packageName)
+                    ?: Intent()).apply {
+                    putExtra(EXTRA_CAM_NAME, camName)
+                }
+            // Use the widget id as the request code so each widget instance gets its own
+            // PendingIntent (otherwise they'd collide and all open whichever cam was set last).
             val pendingIntent = PendingIntent.getActivity(
-                context, 0, launchIntent, pendingIntentFlags()
+                context, appWidgetId, launchIntent, pendingIntentFlags()
             )
             views.setOnClickPendingIntent(R.id.widget_root, pendingIntent)
             return views
@@ -119,7 +128,7 @@ class ToprCamWidgetProvider : AppWidgetProvider() {
                 camName = prefs.getString("cam_name", DEFAULT_CAM_NAME) ?: DEFAULT_CAM_NAME
             }
 
-            appWidgetManager.updateAppWidget(appWidgetId, buildBaseViews(context, camName))
+            appWidgetManager.updateAppWidget(appWidgetId, buildBaseViews(context, appWidgetId, camName))
 
             executor.execute {
                 var bitmap: Bitmap? = null
@@ -139,7 +148,7 @@ class ToprCamWidgetProvider : AppWidgetProvider() {
                 }
 
                 if (bitmap != null) {
-                    val views = buildBaseViews(context, camName)
+                    val views = buildBaseViews(context, appWidgetId, camName)
                     views.setImageViewBitmap(R.id.widget_image, bitmap)
                     val timeText = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
                     views.setTextViewText(R.id.widget_updated_at, "$timeText")

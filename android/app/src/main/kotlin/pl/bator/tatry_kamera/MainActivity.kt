@@ -15,6 +15,7 @@ class MainActivity : FlutterActivity() {
     }
 
     private var configuringWidgetId: Int = AppWidgetManager.INVALID_APPWIDGET_ID
+    private var pendingLaunchCamera: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,6 +28,10 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun handleIntent(intent: Intent) {
+        intent.getStringExtra(ToprCamWidgetProvider.EXTRA_CAM_NAME)?.let {
+            pendingLaunchCamera = it
+        }
+
         if (intent.action != AppWidgetManager.ACTION_APPWIDGET_CONFIGURE) return
 
         val widgetId = intent.getIntExtra(
@@ -67,6 +72,11 @@ class MainActivity : FlutterActivity() {
                 "prepareForPin" -> {
                     skipNextConfigure = true
                     result.success(null)
+                }
+                "consumeLaunchCamera" -> {
+                    val cam = pendingLaunchCamera
+                    pendingLaunchCamera = null
+                    result.success(cam)
                 }
                 else -> result.notImplemented()
             }
